@@ -6,22 +6,10 @@ Created on Fri Sep 16 13:12:31 2022
 @author: beriksso
 """
 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Sep  5 13:21:43 2022
-
-@author: beriksso
-"""
-
-
-
 '''
 Fit NBI/TH/back scatter to DD and DT peak
 '''
 
-import basics
-import KM11data
 import nes
 from nes import tofor
 from nes.utils import jetplasma
@@ -33,13 +21,11 @@ from nes.tofor.commands import load_response_function
 import useful_defs as udfs
 import sys
 import matplotlib.pyplot as plt
-import useful_defs as udfs
-import json
-import matplotlib
 from nes.utils import jetnbi
-import os
+
 
 def load(file_name, name=None, shot=None, t0=None, t1=None, drf=''):
+    """Load response function and data."""
     # Load data from file
     d = np.load(file_name)
 
@@ -49,12 +35,12 @@ def load(file_name, name=None, shot=None, t0=None, t1=None, drf=''):
 
     # Load response function
     r = load_response_function(drf)
-    
+
     if name is None:
         name = file_name
 
     nes_data = nes.Data(data, name=name, response=r,
-                        back=d['bgr_level'], 
+                        back=d['bgr_level'],
                         x_label='$t_{TOF}$ (ns)', y_label='counts/bin')
 
     # JET specific attributes
@@ -63,7 +49,6 @@ def load(file_name, name=None, shot=None, t0=None, t1=None, drf=''):
     nes_data.t1 = t1
 
     return nes_data
-
 
 
 # Decide which DRF/data set to use (kinematic cuts or not)
@@ -115,7 +100,7 @@ E, D = jetnbi.get_dist(shot, t0, t1, ion='D')
 
 # Get plasma parameters
 ne, Te, B, R0 = jetplasma.get_params(shot, t0, t1)
-Te = 5 #  keV
+Te = 5  # keV
 
 plasma = stix.plasma.DPlasma(ne, Te, B, R=R0)
 Emax = 3000.0
@@ -135,9 +120,9 @@ dd_scalc.u1 = [0, 0, 1]
 dt_scalc.u1 = [0, 0, 1]
 
 # Set reactant velocity distributions
-dd_scalc.reactant_a.sample_E_dist(fp.E, fp.dNdE, pitch_range=[0.5,0.7])
+dd_scalc.reactant_a.sample_E_dist(fp.E, fp.dNdE, pitch_range=[0.5, 0.7])
 dd_scalc.reactant_b.sample_maxwellian_dist(Te)
-dt_scalc.reactant_a.sample_E_dist(E, D, pitch_range=[0.5,0.7])
+dt_scalc.reactant_a.sample_E_dist(E, D, pitch_range=[0.5, 0.7])
 dt_scalc.reactant_b.sample_maxwellian_dist(Te)
 
 bt_dd, En_dd = dd_scalc(bin_width=50.0)
@@ -175,7 +160,6 @@ tofor.fit()
 tofor.fit()
 
 
-
 # Calculate scatter component
 tofor.commands.fit_scatter()
 tofor.fit.rigid_shift.lock = False
@@ -190,21 +174,21 @@ I_bt_dt0 = bt_dt_comp.N.value
 I_bt_dd0 = bt_dd_comp.N.value
 I_th_dd0 = tofor.thermal.N.value
 
-    
+
 to_save = {}
 to_save['figure'] = tofor.fit.datafig
 to_save['time_range'] = [t0, t1]
-to_save['n_spectrum'] = {'bt_dt':[bt_dt_comp.En, bt_dt_comp.spectrum],
-                         'bt_dd':[bt_dd_comp.En, bt_dd_comp.spectrum],
-                         'th_dd':[tofor.thermal.En, tofor.thermal.spectrum],
-                         'scatter':[tofor.scatter.En, tofor.scatter.spectrum]}
-to_save['tof_spectrum'] = {'TH (DD)':tofor.fit.comp_data['TH (DD)'],
-                       'NBI (DT)':tofor.fit.comp_data['NBI (DT)'],
-                       'NBI (DD)':tofor.fit.comp_data['NBI (DD)'],
-                       'scatter':tofor.fit.comp_data['scatter'],
-                       'tof_axis':tofor.fit.data.axis}
+to_save['n_spectrum'] = {'bt_dt': [bt_dt_comp.En, bt_dt_comp.spectrum],
+                         'bt_dd': [bt_dd_comp.En, bt_dd_comp.spectrum],
+                         'th_dd': [tofor.thermal.En, tofor.thermal.spectrum],
+                         'scatter': [tofor.scatter.En, tofor.scatter.spectrum]}
+to_save['tof_spectrum'] = {'TH (DD)': tofor.fit.comp_data['TH (DD)'],
+                           'NBI (DT)': tofor.fit.comp_data['NBI (DT)'],
+                           'NBI (DD)': tofor.fit.comp_data['NBI (DD)'],
+                           'scatter': tofor.fit.comp_data['scatter'],
+                           'tof_axis': tofor.fit.data.axis}
 to_save['I_bt_dt-0'] = I_bt_dt0
-to_save['I_bt_dd-0'] = I_bt_dd0 
+to_save['I_bt_dd-0'] = I_bt_dd0
 to_save['I_th_dd-0'] = I_th_dd0
 
 file = 'fit_output.pickle'
