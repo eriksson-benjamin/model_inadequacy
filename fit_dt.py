@@ -176,7 +176,6 @@ I_th_dd0 = tofor.thermal.N.value
 
 
 to_save = {}
-to_save['figure'] = tofor.fit.datafig
 to_save['time_range'] = [t0, t1]
 to_save['n_spectrum'] = {'bt_dt': [bt_dt_comp.En, bt_dt_comp.spectrum],
                          'bt_dd': [bt_dd_comp.En, bt_dd_comp.spectrum],
