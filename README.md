@@ -2,6 +2,7 @@
 Determine the shape of a component which can compensate for the model inadequacy seen in the intermediate TOF area (30-60 ns).
 
 ## The following D(T) discharges were used.
+<pre>
 Parameter limits
 ----------------
 Fuel ratio:    [0.01, 0.06] 
@@ -13,7 +14,7 @@ RF power:      [0, 0]
 Neutron yield: [1e+15, inf] 
 Resonance pos: [-inf, inf] 
 RF particle:   tritons 
-
+</pre>
 | JPN | t0 | t1 |
 | :----: | :----: | :----: |
 | 100503 | 40 | 80 |
