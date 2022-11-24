@@ -4,15 +4,16 @@ Determine the shape of a component which can compensate for the model inadequacy
 ## The following D(T) discharges were used.
 Parameter limits
 ----------------
-Fuel ratio:    [0.01, 0.06]
-T fraction:    [-inf, inf]
-D fraction:    [-inf, inf]
-H fraction:    [-inf, inf]
-NBI power:     [1e-09, inf]
-RF power:      [0, 0]
-Neutron yield: [1000000000000000.0, inf]
-Resonance pos: [-inf, inf]
-RF particle:   tritons
+Fuel ratio:    [0.01, 0.06] 
+T fraction:    [-inf, inf] 
+D fraction:    [-inf, inf] 
+H fraction:    [-inf, inf] 
+NBI power:     [1e-09, inf] 
+RF power:      [0, 0] 
+Neutron yield: [1e+15, inf] 
+Resonance pos: [-inf, inf] 
+RF particle:   tritons 
+
 | JPN | t0 | t1 |
 | :----: | :----: | :----: |
 | 100503 | 40 | 80 |
