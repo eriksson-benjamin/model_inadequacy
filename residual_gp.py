@@ -183,8 +183,7 @@ if __name__ == '__main__':
 
     # Check where prediction goes negative outside aoi
     y_clean = clean_negatives(y_pred, tof_axis, aoi)
-#    plt.plot(x_test.squeeze(), y_clean, color='r', linestyle='--', 
-#             label='GP final')
+
 
     # Labeling axes
     plt.legend()
