@@ -164,9 +164,6 @@ if __name__ == '__main__':
     # Compute the standard deviation of the sample. 
     y_hat_sd = np.apply_over_axes(func=np.std, a=y_hat_samples, axes=1).squeeze()
     
-    # Find where prediction goes negative outside aoi
-    
-    
     # Plotting the training data.
     plt.figure('GP regression of residuals')
     plt.title('GP regression of residuals', loc='left')
@@ -184,17 +181,18 @@ if __name__ == '__main__':
     # Plot prediction
     plt.plot(x_test.squeeze(), y_pred, color='green', label='GP regression')
 
-
     # Check where prediction goes negative outside aoi
     y_clean = clean_negatives(y_pred, tof_axis, aoi)
-    plt.plot(x_test.squeeze(), y_clean, color='r', linestyle='--', 
-             label='GP final')
+#    plt.plot(x_test.squeeze(), y_clean, color='r', linestyle='--', 
+#             label='GP final')
 
     # Labeling axes
     plt.legend()
     plt.xlabel('$t_{TOF}$ (ns)')
     plt.ylabel('$r$')
-
+    plt.xlim(25, 60)
+    plt.ylim(-200, 500)
+    
     # Save prediction to file
     to_save = np.array([tof_axis, y_clean]).T
     np.savetxt('gp_prediction.txt', to_save)

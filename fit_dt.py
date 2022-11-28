@@ -73,8 +73,6 @@ elif setting == 2:
 else:
     raise ValueError(f'Invalid setting: {setting}')
 
-calc_uncrt = True
-only_bt = False
 
 # Get time range
 file_name = 'input_files/model_inadequacy.pickle'
@@ -154,11 +152,11 @@ tofor.thermal.use = True
 tofor.thermal.T = Te
 tofor.thermal.T.lock = True
 
+
 print('Starting fitting routine.')
 tofor.fit.set_startvals()
 tofor.fit()
 tofor.fit()
-
 
 # Calculate scatter component
 tofor.commands.fit_scatter()
@@ -173,7 +171,6 @@ print('Fit complete.')
 I_bt_dt0 = bt_dt_comp.N.value
 I_bt_dd0 = bt_dd_comp.N.value
 I_th_dd0 = tofor.thermal.N.value
-
 
 to_save = {}
 to_save['time_range'] = [t0, t1]
