@@ -25,7 +25,7 @@ def import_data(dat_file, fit_file, mi_file):
     dat = (x_dat, y_dat-bgr_dat, np.sqrt(y_dat))
     
     # Fit data
-    fit = udfs.unpickle(fit_file)['tof_spectrum']
+    fit = udfs.numpify(udfs.json_read_dictionary(fit_file))
     
     # Model inadequacy component
     x_mi, y_mi = np.loadtxt(mi_file).T
@@ -41,9 +41,11 @@ def cash(dat, mod):
     """Calculate Cash-statistic."""
     return -2 * np.sum(dat*(np.log(mod/dat) + 1) - mod - 1)
 
+
 def chi2N(dat, mod):
     """Calculate reduced chi2."""
     return np.sum((dat - mod)**2 / mod / (len(dat) - 6))
+
 
 def fit_function(params, x, y, mod, xlim):
     """Function for minimizer."""
@@ -51,18 +53,12 @@ def fit_function(params, x, y, mod, xlim):
     
     # Set x-limit
     mask = (x >= xlim[0]) & (x <= xlim[1])
-    
-    
-#    # Calculate C-stat
-#    c_stat = cash(y[mask], model[mask])
-#    print(f'Cash: {c_stat}')
 
     # Calculate chi2N
     chi2n = chi2N(y[mask], model[mask])
     print(f'Chi2N: {chi2n}')
     
     return chi2n
-#    return c_stat
 
 
 def calculate_model(params, mod, return_comp=False):
@@ -102,8 +98,8 @@ def plot_model(dat, mod, params):
              linestyle=udfs.get_linestyle('long dash with offset'))
     plt.plot(dat[0], comps[2], label='T(T,n)He5(GS)', color='C1', 
              linestyle='dotted')
-#    plt.plot(dat[0], comps[3], label='T(T,n)He5(ES)', color='C3', 
-#             linestyle='--')
+    plt.plot(dat[0], comps[3], label='T(T,n)He5(ES)', color='C3', 
+             linestyle='--')
     plt.plot(dat[0], comps[4], label='scatter', color='k', 
              linestyle=udfs.get_linestyle('densely dashdotdotted'))
     plt.plot(dat[0], comps[5], label='model inadequacy', color='magenta', 
@@ -121,8 +117,27 @@ def plot_model(dat, mod, params):
 if __name__ == '__main__':
     # Import data/model
     name = 'nbi'
+    
+    # Set which mode to use for fit components
+    mode = 1
+    """
+    mode = 0 
+    --------
+    Regular 3-body TT reaction + resonance spectrum (ES + GS) generated using 
+    Breit-Wigner distribution for He-5 mass.
+    
+    mode = 1
+    --------
+    TT reactions (3-body, GS, ES) from Gerry Hale's R-matrix theory.
+    """
+
+
+    if mode == 0:
+        fit_file = f'input_files/tt_spectrum/{name}_fit.json'
+    elif mode == 1:
+        fit_file = f'input_files/tt_spectrum/hale_fit.json'
+
     dat_file = f'input_files/tt_spectrum/{name}_dat.txt'
-    fit_file = f'input_files/tt_spectrum/{name}_fit.pickle'
     mi_file = 'output_files/gp_prediction.txt'
     dat, fit = import_data(dat_file, fit_file, mi_file)
     
