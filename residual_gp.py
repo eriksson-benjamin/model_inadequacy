@@ -20,7 +20,26 @@ from sklearn.gaussian_process.kernels import ConstantKernel, RBF
 
 
 def load_residuals(fit_file, dat_file):
-    """Return the residuals of the fit in f_name."""
+    """
+    Return the residuals of the fit in f_name.
+
+    Parameters
+    ----------
+    fit_file : str,
+        Path to the file containing the fit data.
+    dat_file : str
+        Path to the file containing the experimental data.
+
+    Returns
+    -------
+    tuple : (tof_axis, res, u_res),
+        tof_axis : ndarray,
+            Time-of-flight axis.
+        res : ndarray,
+            Residuals of the fit.
+        u_res : ndarray,
+            Uncertainties in the residuals.
+    """ 
     # Import fit data
     fit = udfs.unpickle(fit_file)['tof_spectrum']
 
@@ -49,7 +68,6 @@ def load_residuals(fit_file, dat_file):
 def plot_residuals(x_axis, res, u_res):
     """Plot the fit residuals."""
     plt.figure('Residuals')
-    # plt.plot(x_axis, residuals, 'k.')
     plt.errorbar(x_axis, res, u_res, color='k',
                  linestyle='None', marker='.', markersize=1)
     plt.xlabel('$t_{TOF}$ (ns)')
@@ -58,27 +76,71 @@ def plot_residuals(x_axis, res, u_res):
 
 
 def gp_prediction(l, sigma_f, sigma_n , X_train, y_train, X_test):
+    """
+    Apply Gaussian Process regression to fit a function to the data.
+
+    Parameters
+    ----------
+    l : float,
+        length scale for the RBF kernel
+    sigma_f : float,
+        multiplicative factor for the constant kernel
+    sigma_n : float,
+        additive factor for the variance in the prediction
+    X_train : array_like,
+        independent variable of training data
+    y_train : array_like,
+        dependent variable of training data
+    X_test : array_like,
+        independent variable of test data
+
+    Returns
+    -------
+    tuple : (y_pred, gp)
+        y_pred : array_like,
+            predicted values for X_test
+        gp : GaussianProcessRegressor object,
+            fitted model
+    """    
+    
     # Kernel definition 
     kernel = (ConstantKernel(constant_value=sigma_f, 
                             constant_value_bounds=(1e-2, 1e2)) *
               RBF(length_scale=l, length_scale_bounds=(1e-2, 1e2)))
     
     # GP model 
-    gp = GaussianProcessRegressor(kernel=kernel, alpha=sigma_n**2, n_restarts_optimizer=10, )
+    gp = GaussianProcessRegressor(kernel=kernel, alpha=sigma_n**2, 
+                                  n_restarts_optimizer=10)
+    
     # Fitting in the gp model
     gp.fit(X_train, y_train)
+    
     # Make the prediction on test set.
     y_pred = gp.predict(X_test)
     return y_pred, gp
 
 def clean_negatives(y_pred, tof_axis, aoi):
     """
-    Removes oscillations in GP prediction outside aoi.
-    
+    Removes oscillations in GP prediction outside area of interest.
+
+    Parameters
+    ----------
+    y_pred : array_like,
+        predicted values from GP regression.
+    tof_axis : array_like,
+        Time-of-flight axis.
+    aoi : tuple(float),
+        Area of interest boundaries.
+
+    Returns
+    -------
+    array_like:
+        Copy of y_pred with all negative values outside of aoi set to zero.
+
     Notes
     -----
-    Finds first negative value to the right and left of aoi bounds, sets all 
-    values before/after these to zero.
+    Finds first negative value to the right and left of area of interest 
+    bounds, sets all values before/after these to zero.
     """
     mask_1 = tof_axis <= aoi[0]
     mask_2 = tof_axis >= aoi[1]
@@ -93,6 +155,7 @@ def clean_negatives(y_pred, tof_axis, aoi):
     y_copy[arg_2:] = 0
     
     return y_copy
+
 
 if __name__ == '__main__':
     # Calculate residuals
@@ -154,7 +217,6 @@ if __name__ == '__main__':
     y_pred, gp = gp_prediction(l_init, sigma_f_init, sigma_n, 
                                x_train, y_train, x_test)    
     
-    
     # Generate samples from posterior distribution. 
     y_hat_samples = gp.sample_y(x_test, n_samples=len(x_test))
     
@@ -184,7 +246,6 @@ if __name__ == '__main__':
     # Check where prediction goes negative outside aoi
     y_clean = clean_negatives(y_pred, tof_axis, aoi)
 
-
     # Labeling axes
     plt.legend()
     plt.xlabel('$t_{TOF}$ (ns)')
@@ -195,18 +256,3 @@ if __name__ == '__main__':
     # Save prediction to file
     to_save = np.array([tof_axis, y_clean]).T
     np.savetxt('gp_prediction.txt', to_save)
-
-    # Save unit matrix to DRF-like file
-    unit_matrix = np.diag(np.ones(len(tof_axis)))
-    matrix = [list(row) for row in unit_matrix]
-    tof_axis_list = list(np.round(tof_axis, 1))
-    drf_x, drf_y = tof_axis_list, tof_axis_list
-    x_unit, y_unit = 'ns', 'ns'
-    info = ('Identity matrix to be used as the DRF for folding a '
-            'TOF component in NES.')
-    name = 'Identity matrix'
-
-    to_save = {'matrix': matrix, 'drf_x': drf_x, 'drf_y': drf_y, 
-               'x_unit': x_unit, 'y_unit': y_unit, 'info': info, 'name': name}
-    udfs.json_write_dictionary('identity_matrix.json', to_save)
-
