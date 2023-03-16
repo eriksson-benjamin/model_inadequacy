@@ -64,13 +64,13 @@ def fit_function(params, x, y, mod, xlim):
 def calculate_model(params, mod, return_comp=False):
     """Multiply parameter intensities with corresponding model component."""
     # Component intensities
-    I_bt_dt, I_bt_tt, I_gs_tt, I_es_tt, I_scatter, I_mi = params
+    I_bt_dt, I_bt_tt, I_gs_tt, I_es_tt, I_mi = params
     
     bt_dt_comp = I_bt_dt*mod['D(T,n)He4'] 
     bt_tt_comp = I_bt_tt*mod['T(T,2n)He4'] 
     gs_tt_comp = I_gs_tt*mod['T(T,n)He5(GS)']
     es_tt_comp = I_es_tt*mod['T(T,n)He5(ES)']
-    scatter_comp = I_scatter*mod['scatter'] 
+    scatter_comp = mod['scatter'] 
     mi_comp = I_mi*mod['model_inadequacy']
     
     # Calculate model
@@ -81,6 +81,7 @@ def calculate_model(params, mod, return_comp=False):
         return bt_dt_comp, bt_tt_comp, gs_tt_comp, es_tt_comp, scatter_comp, mi_comp
     else:
         return model
+    
     
 def plot_model(dat, mod, params):
     """Plot model with data."""
@@ -114,12 +115,24 @@ def plot_model(dat, mod, params):
     plt.ylim(1, 4E4)
     plt.xlim(20, 130)
 
+def set_lims(scale):
+    """Set limits for plots."""
+    if scale == 'log':
+        plt.yscale('log')
+        plt.ylim(1, 2E4)
+        plt.xlim(20, 120)
+    elif scale == 'linear':
+        plt.yscale('linear')
+        plt.ylim(-200, 5500)
+        plt.xlim(27, 80)
+
+
 if __name__ == '__main__':
     # Import data/model
     name = 'nbi'
     
     # Set which mode to use for fit components
-    mode = 1
+    mode = 3
     """
     mode = 0 
     --------
@@ -129,6 +142,10 @@ if __name__ == '__main__':
     mode = 1
     --------
     TT reactions (3-body, GS, ES) from Gerry Hale's R-matrix theory.
+    
+    mode = 3
+    --------
+    TT reaction from C. Brune fit to TOFu data.
     """
 
 
@@ -136,13 +153,13 @@ if __name__ == '__main__':
         fit_file = f'input_files/tt_spectrum/{name}_fit.json'
     elif mode == 1:
         fit_file = f'input_files/tt_spectrum/hale_fit.json'
-
+        
     dat_file = f'input_files/tt_spectrum/{name}_dat.txt'
     mi_file = 'output_files/gp_prediction.txt'
     dat, fit = import_data(dat_file, fit_file, mi_file)
     
     # Minimize
-    parameters = (1, 1, 1, 1, 1, 1)
+    parameters = (1, 1, 1, 1, 1)
     xlim = (20, 100)
     popt = scipy.optimize.minimize(fit_function, parameters, 
                                    args=(dat[0], dat[1], fit, xlim))
