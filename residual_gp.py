@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import ConstantKernel, RBF
-
+import scipy as sp
 
 
 def load_residuals(fit_file, dat_file):
@@ -111,13 +111,14 @@ def gp_prediction(l, sigma_f, sigma_n , X_train, y_train, X_test):
     # GP model 
     gp = GaussianProcessRegressor(kernel=kernel, alpha=sigma_n**2, 
                                   n_restarts_optimizer=10)
-    
+        
     # Fitting in the gp model
     gp.fit(X_train, y_train)
     
     # Make the prediction on test set.
-    y_pred = gp.predict(X_test)
-    return y_pred, gp
+    y_pred, y_std = gp.predict(X_test, return_std=True)
+    return y_pred, y_std, gp
+
 
 def clean_negatives(y_pred, tof_axis, aoi):
     """
@@ -157,20 +158,65 @@ def clean_negatives(y_pred, tof_axis, aoi):
     return y_copy
 
 
-if __name__ == '__main__':
+def prediction_interval(x_train, y_train, x_test, y_hat, y_hat_std):
+    """Calculate the 95% prediction interval."""
+    # Mean squared error
+    args = [np.argmin(np.abs(x_test - x)) for x in x_train]
+    mse =  np.sum((y_hat[args] - y_train)**2) / (len(y_train) - 1)
+    
+    # Students t crit. value
+    t_stat = sp.stats.t.ppf(0.95, len(y_train))
+    
+    # The rest
+    x_m = np.mean(x_test)
+    term = (x_test - x_m)**2 / np.sum((x_test - x_m)**2)
+    factor = np.sqrt(1 + 1/len(y_train) + term).squeeze()
+    
+    # Prediction interval
+    pred_int = t_stat * np.sqrt(mse) * factor
+    
+    u = y_hat + pred_int
+    l = y_hat - pred_int
+    
+    return u, l
+
+
+def plot_gp(x_train, y_train, uy_train, x_test, y_pred, y_std):
+    """Plot average Gaussian process regression (+/-2 sigma) on top of data."""
+    # Plotting the training data.
+    plt.figure('GP regression of residuals')
+    plt.title('GP regression of residuals', loc='left')
+    plt.errorbar(x_train.squeeze(), y_train, yerr=uy_train, color='k', 
+                 label='residuals', linestyle='None', marker='.', 
+                 markersize=4)
+    
+    # Prediction interval
+    y_u, y_l = prediction_interval(x_train, y_train, x_test, y_pred, y_std)
+    ax = plt.gca()
+    ax.fill_between(x=x_test.squeeze(), y1=y_l, y2=y_u, color='g',alpha=0.3, 
+                    label='95% prediction interval')
+    
+    # Plot prediction
+    plt.plot(x_test.squeeze(), y_pred, color='green', label='GP regression')
+
+    # Labeling axes
+    plt.legend(frameon=True)
+    plt.xlabel('$t_{TOF}$ (ns)')
+    plt.ylabel('$r$')
+    plt.xlim(25, 60)
+    plt.ylim(-200, 600)
+    
+
+def main(alternative=1):
     # Calculate residuals
     fit_file = 'output_files/fit_output.pickle'
     dat_file = 'input_files/model_inadequacy.pickle'
     tof_axis, res, u_res = load_residuals(fit_file, dat_file)
 
-    # Plot residuals
-    plot_residuals(tof_axis, res, u_res)
-    
     # Copy data arrays
     x_train = np.copy(tof_axis)
     y_train = np.copy(res)
     uy_train = np.copy(u_res)
-
 
     aoi = (27.5, 56) #  area-of-interest
     aof = (20.0, 70.0) #  area-of-fitting
@@ -178,9 +224,6 @@ if __name__ == '__main__':
     # Masks
     aoi_mask = ((tof_axis >= aoi[0]) & (tof_axis <= aoi[1]))
     aof_mask = ((tof_axis >= aof[0]) & (tof_axis <= aof[1]))
-    
-    # Set alternative
-    alternative = 1
     
     '''
     Alternative 1: set everything outside aoi to zero, include some points 
@@ -214,45 +257,20 @@ if __name__ == '__main__':
     sigma_f_init = 3
     sigma_n = np.sqrt(uy_train)
     
-    y_pred, gp = gp_prediction(l_init, sigma_f_init, sigma_n, 
+    y_pred, y_std, gp = gp_prediction(l_init, sigma_f_init, sigma_n, 
                                x_train, y_train, x_test)    
     
-    # Generate samples from posterior distribution. 
-    y_hat_samples = gp.sample_y(x_test, n_samples=len(x_test))
     
-    # Compute the mean of the sample. 
-    y_hat = np.apply_over_axes(func=np.mean, a=y_hat_samples, axes=1).squeeze()
-    
-    # Compute the standard deviation of the sample. 
-    y_hat_sd = np.apply_over_axes(func=np.std, a=y_hat_samples, axes=1).squeeze()
-    
-    # Plotting the training data.
-    plt.figure('GP regression of residuals')
-    plt.title('GP regression of residuals', loc='left')
-    plt.plot(x_train.squeeze(), y_train, 'k.', label='residuals')
-    plt.errorbar(x_train.squeeze(), y_train, yerr=uy_train, color='k', 
-                 linestyle='None')
-    
-    
-    # Plot corridor. 
-    ax = plt.gca()
-    ax.fill_between(x=x_test.squeeze(), y1=(y_hat - 2*y_hat_sd), 
-                    y2=(y_hat + 2*y_hat_sd), color='green',alpha=0.3, 
-                    label='$\pm 2 \sigma$')
-    
-    # Plot prediction
-    plt.plot(x_test.squeeze(), y_pred, color='green', label='GP regression')
+    # Plot
+    plot_gp(x_train, y_train, uy_train, x_test, y_pred, y_std)
 
     # Check where prediction goes negative outside aoi
     y_clean = clean_negatives(y_pred, tof_axis, aoi)
 
-    # Labeling axes
-    plt.legend()
-    plt.xlabel('$t_{TOF}$ (ns)')
-    plt.ylabel('$r$')
-    plt.xlim(25, 60)
-    plt.ylim(-200, 500)
-    
     # Save prediction to file
     to_save = np.array([tof_axis, y_clean]).T
     np.savetxt('gp_prediction.txt', to_save)
+    
+    
+if __name__ == '__main__':
+    main(1)
